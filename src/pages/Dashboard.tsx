@@ -1,17 +1,22 @@
 import React, { useState, useEffect } from 'react';
 import { useMutation } from '@tanstack/react-query';
 import { startSession, stopSession, type StartSessionPayload } from '../api/sessions';
-import { Play, Pause, Square, ChevronDown, RotateCcw } from 'lucide-react';
+import { Play, Pause, Square, ChevronDown } from 'lucide-react';
+
+// --- DATA LOGIC: Valid UUIDs for the Backend ---
+const TEST_USER_UUID = "77f7e686-9a89-4bc7-acab-bd3bb2412d76";
 
 export const Dashboard: React.FC = () => {
     const [isSessionActive, setIsSessionActive] = useState(false);
     const [elapsedSeconds, setElapsedSeconds] = useState(0);
+
+    // --- DATA LOGIC: Initialize with valid User UUID ---
     const [formData, setFormData] = useState<StartSessionPayload>({
-        user_id: "1", // Changed to string "1" to likely match your Go backend int parsing if using JSON numbers, or check your backend contract
+        user_id: TEST_USER_UUID, // Fixed: Must be a UUID string
         course_id: '',
         module: 'Module 1',
         topic: '',
-        activity_type: 'coding',
+        activity_type: 'study', // Fixed: 'coding' might not be valid if backend expects enum, defaulting to 'study'
     });
 
     // --- Timer Logic ---
@@ -30,7 +35,7 @@ export const Dashboard: React.FC = () => {
             setIsSessionActive(true);
             setElapsedSeconds(0);
         },
-        onError: (err) => alert("Failed to start: " + err.message)
+        onError: (err: any) => alert("Failed to start: " + (err.response?.data?.error || err.message))
     });
 
     const stopMutation = useMutation({
@@ -39,6 +44,7 @@ export const Dashboard: React.FC = () => {
             setIsSessionActive(false);
             setFormData(prev => ({ ...prev, course_id: '', topic: '' }));
         },
+        onError: (err: any) => console.error("Stop Error:", err.response?.data || err.message)
     });
 
     const handleStart = () => {
@@ -50,8 +56,13 @@ export const Dashboard: React.FC = () => {
     };
 
     const handleStop = () => {
-        // Assuming user_id is consistent
-        stopMutation.mutate({ user_id: formData.user_id, notes: '' });
+        // --- DATA LOGIC: Send Nulls for Study Sessions ---
+        stopMutation.mutate({
+            user_id: formData.user_id,
+            notes: '',
+            quiz_score: null, // Required by backend for study sessions
+            quiz_passed: null // Required by backend for study sessions
+        });
     };
 
     // --- Formatting ---
